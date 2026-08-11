@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>語取り — 英文から難語を拾い、音読する文を選ぶ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;1,6..72,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light only;
+  --shikkui:#E7E8E2;
+  --washi:#F7F7F3;
+  --sumi:#1B1B18;
+  --sumi-mid:#5A5A52;
+  --sumi-faint:#8C8C83;
+  --ai:#23485B;
+  --ai-soft:rgba(35,72,91,.10);
+  --bengara:#8C4A34;
+  --hair:rgba(27,27,24,.14);
+  --hair-strong:rgba(27,27,24,.28);
+  --ja-serif:"Zen Old Mincho",serif;
+  --ja-sans:"Zen Kaku Gothic New",system-ui,sans-serif;
+  --en-serif:"Newsreader",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--shikkui);
+  color:var(--sumi);
+  font-family:var(--ja-sans);
+  font-size:16px;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:820px;margin:0 auto;padding:0 20px 96px}
+
+/* ---------- 見出し ---------- */
+.masthead{padding:38px 0 22px;border-bottom:1px solid var(--hair-strong);position:relative}
+.masthead .eyebrow{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--sumi-faint);margin:0 0 14px
+}
+.masthead h1{
+  font-family:var(--ja-serif);font-weight:900;
+  font-size:clamp(38px,11vw,60px);line-height:1;letter-spacing:.06em;
+  margin:0;
+}
+.masthead h1 .yomi{
+  display:block;font-family:var(--mono);font-weight:400;
+  font-size:11px;letter-spacing:.34em;color:var(--sumi-faint);
+  margin-top:12px;text-transform:uppercase;
+}
+.masthead p{
+  margin:18px 0 0;max-width:34em;color:var(--sumi-mid);
+  font-size:14.5px;line-height:1.85;
+}
+
+/* ---------- 入力 ---------- */
+.block{padding:30px 0;border-bottom:1px solid var(--hair)}
+.block-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.block-head h2{
+  font-family:var(--ja-serif);font-size:20px;font-weight:700;
+  letter-spacing:.09em;margin:0;
+}
+.block-head .note{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--sumi-faint)}
+
+textarea{
+  width:100%;min-height:190px;resize:vertical;
+  background:var(--washi);color:var(--sumi);
+  border:1px solid var(--hair-strong);border-radius:2px;
+  padding:16px 15px;font-family:var(--en-serif);font-size:16.5px;line-height:1.8;
+}
+textarea:focus{outline:2px solid var(--ai);outline-offset:1px}
+textarea::placeholder{color:var(--sumi-faint);font-style:italic}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+button{
+  font-family:var(--ja-sans);font-size:14px;font-weight:500;
+  border-radius:2px;cursor:pointer;transition:background .15s,color .15s;
+}
+button:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
+.btn-primary{
+  background:var(--sumi);color:var(--shikkui);border:1px solid var(--sumi);
+  padding:11px 22px;letter-spacing:.08em;
+}
+.btn-primary:hover:not(:disabled){background:var(--ai);border-color:var(--ai)}
+.btn-primary:disabled{opacity:.4;cursor:default}
+.btn-ghost{
+  background:transparent;color:var(--sumi-mid);border:1px solid var(--hair-strong);
+  padding:10px 15px;
+}
+.btn-ghost:hover{color:var(--sumi);border-color:var(--sumi)}
+
+.level{display:flex;align-items:center;gap:0;border:1px solid var(--hair-strong);border-radius:2px;overflow:hidden}
+.level button{border:0;background:transparent;color:var(--sumi-mid);padding:10px 13px;font-size:12.5px;border-right:1px solid var(--hair)}
+.level button:last-child{border-right:0}
+.level button[aria-pressed="true"]{background:var(--sumi);color:var(--shikkui)}
+
+/* ---------- 墨付け（signature） ---------- */
+.marked{
+  background:var(--washi);border:1px solid var(--hair-strong);border-radius:2px;
+  padding:20px 18px;font-family:var(--en-serif);font-size:17px;line-height:2.15;
+  position:relative;overflow:hidden;
+}
+.marked .sweep{
+  position:absolute;left:0;top:0;height:100%;width:1px;background:var(--ai);
+  animation:sweep 620ms cubic-bezier(.22,.9,.3,1) forwards;
+}
+@keyframes sweep{from{left:0;opacity:1}to{left:100%;opacity:0}}
+mark.mk{
+  background:var(--ai-soft);color:var(--sumi);
+  border-bottom:2px solid var(--ai);padding:0 1px;cursor:pointer;
+}
+mark.mk:hover{background:var(--ai);color:var(--washi)}
+.tally{
+  display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--sumi-faint);
+}
+.tally b{color:var(--sumi);font-weight:500}
+
+/* ---------- タブ ---------- */
+.tabs{display:flex;gap:26px;border-bottom:1px solid var(--hair-strong);margin-bottom:4px}
+.tabs button{
+  background:none;border:0;padding:14px 0 12px;font-family:var(--ja-serif);
+  font-size:17px;font-weight:700;letter-spacing:.1em;color:var(--sumi-faint);
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.tabs button[aria-selected="true"]{color:var(--sumi);border-bottom-color:var(--ai)}
+.tabs .cnt{font-family:var(--mono);font-size:10px;margin-left:6px;font-weight:400;letter-spacing:.05em}
+
+/* ---------- 語のカード ---------- */
+.card{
+  background:var(--washi);border:1px solid var(--hair);border-left:3px solid var(--ai);
+  border-radius:0 2px 2px 0;padding:18px 18px 16px;margin-top:14px;
+}
+.card.c1{border-left-color:var(--bengara)}
+.card .top{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+.card .word{font-family:var(--en-serif);font-size:26px;font-weight:500;letter-spacing:-.01em;line-height:1.2}
+.card .pos{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--sumi-faint);text-transform:uppercase}
+.card .cefr{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  border:1px solid var(--ai);color:var(--ai);padding:1px 6px;border-radius:2px;
+}
+.card.c1 .cefr{border-color:var(--bengara);color:var(--bengara)}
+.card .ja{font-family:var(--ja-serif);font-size:18px;margin:9px 0 0;line-height:1.6}
+.card .sense{font-size:13.5px;color:var(--sumi-mid);margin:10px 0 0;line-height:1.85}
+.card .ex{
+  margin:14px 0 0;padding-left:13px;border-left:1px solid var(--hair-strong);
+}
+.card .ex .en{font-family:var(--en-serif);font-size:15.5px;line-height:1.7;margin:0}
+.card .ex .jp{font-size:12.5px;color:var(--sumi-faint);margin:5px 0 0;line-height:1.7}
+
+/* ---------- 音読 ---------- */
+.line{
+  background:var(--washi);border:1px solid var(--hair);border-radius:2px;
+  padding:16px 16px 13px;margin-top:14px;
+}
+.line .en{font-family:var(--en-serif);font-size:17.5px;line-height:1.9;margin:0}
+.line .en b{font-weight:500;border-bottom:2px solid var(--ai);padding-bottom:1px}
+.line .meta{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--sumi-faint);
+}
+.line .meta .bar{display:inline-block;width:46px;height:3px;background:var(--hair-strong);position:relative;border-radius:2px}
+.line .meta .bar i{position:absolute;left:0;top:0;height:100%;background:var(--ai);border-radius:2px}
+.speak{
+  background:transparent;border:1px solid var(--hair-strong);color:var(--sumi-mid);
+  padding:6px 12px;font-size:12px;letter-spacing:.06em;
+}
+.speak:hover{border-color:var(--ai);color:var(--ai)}
+.speak[data-on="1"]{background:var(--ai);color:var(--washi);border-color:var(--ai)}
+.rate{display:flex;gap:0;border:1px solid var(--hair-strong);border-radius:2px;overflow:hidden}
+.rate button{border:0;background:transparent;color:var(--sumi-faint);padding:6px 10px;font-family:var(--mono);font-size:11px;border-right:1px solid var(--hair)}
+.rate button:last-child{border-right:0}
+.rate button[aria-pressed="true"]{background:var(--ai);color:var(--washi)}
+
+/* ---------- 状態表示 ---------- */
+.status{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--sumi-mid);
+  display:flex;align-items:center;gap:10px;margin-top:14px;
+}
+.status .dot{width:6px;height:6px;border-radius:50%;background:var(--ai);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.err{
+  border:1px solid var(--bengara);border-left:3px solid var(--bengara);
+  background:var(--washi);padding:13px 15px;margin-top:14px;font-size:13.5px;color:var(--bengara);
+}
+.empty{
+  color:var(--sumi-faint);font-size:14px;padding:30px 0 6px;line-height:1.9;
+}
+.hidden{display:none}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+@media (min-width:720px){
+  body{font-size:16.5px}
+  .wrap{padding:0 32px 110px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">English study tool — v0.1</p>
+  <h1>語取り<span class="yomi">Gadori / vocabulary extractor</span></h1>
+  <p>英文を貼ると、自分のレベルで引く価値のある語だけを残します。辞書を引く前に「どれを引くか」を決めるための道具です。拾った語には文脈に沿った解説がつき、その語を含む文はそのまま音読の練習に使えます。</p>
+</header>
+
+<!-- 1. 材を置く -->
+<section class="block">
+  <div class="block-head">
+    <h2>英文を貼る</h2>
+    <span class="note">PASTE TRANSCRIPT OR ARTICLE</span>
+  </div>
+  <textarea id="src" placeholder="YouTubeの文字起こし、ニュース本文などを貼り付けてください。"></textarea>
+  <div class="controls">
+    <button class="btn-primary" id="mark">単語を拾う</button>
+    <div class="level" role="group" aria-label="拾う難易度">
+      <button data-lv="b1" aria-pressed="false">B1以上</button>
+      <button data-lv="b2" aria-pressed="true">B2以上</button>
+    </div>
+    <button class="btn-ghost" id="sample">見本の英文</button>
+  </div>
+  <div id="markOut" class="hidden" style="margin-top:20px"></div>
+</section>
+
+<!-- 2. 結果 -->
+<section class="block" id="resultBlock" style="border-bottom:0">
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="words">語<span class="cnt" id="cWords">0</span></button>
+    <button role="tab" aria-selected="false" data-tab="lines">音読<span class="cnt" id="cLines">0</span></button>
+  </div>
+
+  <div id="paneWords">
+    <div class="controls" style="margin-top:18px">
+      <button class="btn-primary" id="explain" disabled>解説をつくる</button>
+      <button class="btn-ghost hidden" id="copy">Markdownでコピー</button>
+    </div>
+    <div id="status"></div>
+    <div id="cards"></div>
+    <p class="empty" id="emptyWords">まだ何も拾っていません。英文を貼って「単語を拾う」を押してください。</p>
+  </div>
+
+  <div id="paneLines" class="hidden">
+    <div class="controls" style="margin-top:18px">
+      <span class="note" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--sumi-faint)">READING SPEED</span>
+      <div class="rate" role="group" aria-label="読み上げ速度">
+        <button data-rate="0.7" aria-pressed="false">0.7×</button>
+        <button data-rate="0.85" aria-pressed="true">0.85×</button>
+        <button data-rate="1" aria-pressed="false">1.0×</button>
+      </div>
+    </div>
+    <div id="lines"></div>
+    <p class="empty" id="emptyLines">音読に向く文はまだありません。</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ============================================================
+   1. 足切り用の語彙リスト
+   ============================================================ */
+const CORE = `the be to of and a in that have i it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take person into year your good some could them see other than then now look only come over think back after use two how our work first well way even new want because any these give day most us man thing woman life child world school state family student group country problem hand part place case week company system program question government number night point home water room mother area money story fact month lot right study book eye job word business issue side kind head house service friend father power hour game line end member law car city name team minute idea kid body information parent face level office door health art history party result change morning reason girl guy moment air force education foot boy age process music market sense nation plan college interest death experience effect class control care field role effort rate heart drug show leader light voice wife mind price report tell ask work seem feel try leave call keep let begin help talk turn start might move like live believe hold bring happen write provide sit stand lose pay meet include continue set learn lead understand watch follow stop create speak read allow add spend grow open walk win offer remember love consider appear buy wait serve die send expect build stay fall cut reach kill remain suggest raise pass sell require decide pull run play find give great old high small large next early young important few public bad able best better long own other little national real black white free true full easy clear certain personal red difficult available likely short single hard past serious simple left general blue dark close cold final main green nice huge popular down off under again further once both each more such very can will just should now today tomorrow yesterday always never often sometimes usually really quite almost enough already still yet however therefore also too around through before between during without within against upon along across behind beyond among since until while whether although though because unless amount half number lot bit kind sort type way part end top bottom front back inside outside above below near far here there where why what who whom whose which when how many much little more less least several few every another same different next last first second third final own able sure ready glad happy sad angry tired busy free full empty open closed new old big small long short high low fast slow easy hard hot cold warm cool dry wet clean dirty light heavy strong weak rich poor cheap expensive safe dangerous quiet loud bright dark deep wide narrow thick thin sharp soft smooth rough` .split(/\s+/);
+
+const TIER2 = `achieve adapt adjust advance advantage affect agency analysis annual apply approach appropriate approve argue arrange aspect assess assign assist assume attempt attend attitude attract authority average avoid aware balance benefit boost brief budget capacity career category cause challenge charge chart claim client combine comment commit common communicate compare compete complex component concern conclude conduct confirm conflict consist constant construct consume contact contain context contract contrast contribute convince cooperate coordinate core corporate cost crisis criteria critical crucial culture currency current damage debate decade decline define deliver demand demonstrate deny depend describe design despite detail detect determine develop device differ direct discuss display distance distribute domestic dominate draft dramatic due duty economy edge efficient element eliminate emerge emphasis employ enable encounter encourage energy engage enhance ensure entire environment equal equipment error establish estimate evaluate eventual evidence examine exceed exchange exclude exist expand expense expert explain explore export expose extend extent external extract factor feature figure finance flexible focus formal format former forward foundation frame framework function fund fundamental gain generate global goal grant guarantee guideline highlight identify ignore impact implement imply import impose improve incident income increase indicate individual industry initial initiate injure innovate input insight inspect install instance institute instruct integrate intense internal interpret invest investigate involve isolate issue item journal justify label labor launch layer legislate license limit link locate logic maintain major manual margin mature maximum measure mechanism media method minimum minor mode modify monitor motive negative network neutral norm notion objective obtain obvious occupy occur option outcome output overall overlap panel parallel participate partner passive perceive percent period permit perspective phase philosophy physical policy portion pose positive potential practice precise predict presume previous primary principle prior priority procedure proceed process professional prohibit project promote proportion prospect publish purchase pursue random range ratio react recover reduce refer regime region register regulate reinforce reject relax release relevant reluctant rely remove require research reside resolve resource respond restore restrict retain reveal revenue reverse revise route scenario schedule scheme scope section sector secure seek select sequence series shift significant similar simulate site sole somewhat source specific specify stable statistic status strategy stress structure style submit subsequent substitute sufficient sum summary supplement survey survive suspend sustain symbol target task technical technique technology temporary tense terminate text theme theory thesis topic trace tradition transfer transform transit transmit transport trend trigger ultimate undergo underlie undertake uniform unify unique utilize valid vary vehicle version via violate virtual visible vision visual volume welfare whereas widespread`.split(/\s+/);
+
+const IRREG = {is:'be',are:'be',was:'be',were:'be',been:'be',am:'be',has:'have',had:'have',does:'do',did:'do',done:'do',went:'go',gone:'go',said:'say',made:'make',took:'take',taken:'take',came:'come',got:'get',gotten:'get',saw:'see',seen:'see',knew:'know',known:'know',thought:'think',found:'find',gave:'give',given:'give',told:'tell',became:'become',left:'leave',felt:'feel',brought:'bring',began:'begin',begun:'begin',kept:'keep',held:'hold',wrote:'write',written:'write',stood:'stand',heard:'hear',meant:'mean',ran:'run',paid:'pay',sat:'sit',spoke:'speak',spoken:'speak',met:'meet',led:'lead',grew:'grow',grown:'grow',lost:'lose',fell:'fall',fallen:'fall',sent:'send',built:'build',understood:'understand',drew:'draw',drawn:'draw',broke:'break',broken:'break',spent:'spend',rose:'rise',risen:'rise',drove:'drive',driven:'drive',bought:'buy',wore:'wear',chose:'choose',chosen:'choose',better:'good',best:'good',worse:'bad',worst:'bad',children:'child',men:'man',women:'woman',people:'person',feet:'foot',teeth:'tooth',ran:'run',sought:'seek',taught:'teach',caught:'catch',bore:'bear',arose:'arise',dealt:'deal',shown:'show',shone:'shine',struck:'strike',swore:'swear',threw:'throw',thrown:'throw',wrought:'work'};
+
+/* ============================================================
+   2. 見出し語化（filter用なので候補を複数出して当てにいく）
+   ============================================================ */
+function lemmas(w){
+  const out=new Set([w]);
+  if(IRREG[w]) out.add(IRREG[w]);
+  if(/ies$/.test(w)) out.add(w.replace(/ies$/,'y'));
+  if(/(ses|xes|zes|ches|shes)$/.test(w)) out.add(w.replace(/es$/,''));
+  if(/s$/.test(w)&&!/ss$/.test(w)) out.add(w.replace(/s$/,''));
+  if(/ing$/.test(w)){
+    const s=w.replace(/ing$/,'');
+    out.add(s); out.add(s+'e');
+    if(/([bcdfgklmnprstvz])\1$/.test(s)) out.add(s.slice(0,-1));
+  }
+  if(/ed$/.test(w)){
+    const s=w.replace(/ed$/,'');
+    out.add(s); out.add(s+'e');
+    if(/([bcdfgklmnprstvz])\1$/.test(s)) out.add(s.slice(0,-1));
+    if(/i$/.test(s)) out.add(s.replace(/i$/,'y'));
+  }
+  if(/ly$/.test(w)){ const s=w.replace(/ly$/,''); out.add(s); out.add(s.replace(/i$/,'y')); }
+  if(/(er|est)$/.test(w)) out.add(w.replace(/(er|est)$/,''));
+  return [...out];
+}
+
+/* ============================================================
+   3. 文分割
+   ============================================================ */
+const ABBR=/\b(Mr|Mrs|Ms|Dr|Prof|St|Jr|Sr|vs|etc|Inc|Ltd|Co|Fig|No|approx|e\.g|i\.e|U\.S|U\.K)\.$/i;
+function splitSentences(text){
+  const raw=text.replace(/\s+/g,' ').trim();
+  const parts=[]; let buf='';
+  const toks=raw.split(/(?<=[.!?])\s+/);
+  for(const t of toks){
+    buf = buf ? buf+' '+t : t;
+    if(!ABBR.test(buf.trim())){ parts.push(buf.trim()); buf=''; }
+  }
+  if(buf.trim()) parts.push(buf.trim());
+  return parts.filter(s=>s.split(/\s+/).length>=4);
+}
+
+/* ============================================================
+   4. 状態
+   ============================================================ */
+const S={ level:'b2', sentences:[], targets:[], cards:[], lines:[], rate:.85, speaking:null };
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ============================================================
+   5. 候補語の抽出
+   ============================================================ */
+function stop(){ return S.level==='b2' ? new Set([...CORE,...TIER2]) : new Set(CORE); }
+
+function extract(text){
+  const sents=splitSentences(text);
+  const SW=stop();
+  const map=new Map(); // surface(lower) -> {surface, count, sentIdx}
+  sents.forEach((s,si)=>{
+    const words=s.match(/[A-Za-z][A-Za-z'-]*/g)||[];
+    words.forEach((raw,wi)=>{
+      const w=raw.toLowerCase().replace(/^'+|'+$/g,'');
+      if(w.length<4) return;
+      if(/^[A-Z]/.test(raw) && wi>0) return;              // 固有名詞らしきものは外す
+      if(lemmas(w).some(l=>SW.has(l))) return;            // 既知語は外す
+      if(!map.has(w)) map.set(w,{w,count:0,si});
+      map.get(w).count++;
+    });
+  });
+  // 出現1回の語を優先（＝その文章のキーワード性より「知らなさ」を優先）
+  const arr=[...map.values()].sort((a,b)=>a.count-b.count||b.w.length-a.w.length);
+  return {sents, targets:arr.slice(0,24)};
+}
+
+function renderMarked(text,targets){
+  const set=new Set(targets.map(t=>t.w));
+  const html=esc(text).replace(/[A-Za-z][A-Za-z'-]*/g,m=>
+    set.has(m.toLowerCase()) ? `<mark class="mk" data-w="${m.toLowerCase()}">${m}</mark>` : m
+  ).replace(/\n/g,'<br>');
+  $('markOut').innerHTML =
+    `<div class="marked"><span class="sweep"></span>${html}</div>
+     <div class="tally">
+       <span>総語数 <b>${(text.match(/[A-Za-z][A-Za-z'-]*/g)||[]).length}</b></span>
+       <span>文 <b>${S.sentences.length}</b></span>
+       <span>拾った語 <b>${targets.length}</b></span>
+       <span>しきい値 <b>${S.level.toUpperCase()}+</b></span>
+     </div>`;
+  $('markOut').classList.remove('hidden');
+  $('markOut').querySelectorAll('mark.mk').forEach(el=>{
+    el.onclick=()=>{
+      const c=document.querySelector(`.card[data-w="${el.dataset.w}"]`);
+      if(c){ switchTab('words'); c.scrollIntoView({behavior:'smooth',block:'center'}); }
+    };
+  });
+}
+
+/* ============================================================
+   6. 音読文のスコアリング
+   ============================================================ */
+function scoreLines(sents,targets){
+  const set=new Set(targets.map(t=>t.w));
+  const scored=sents.map(s=>{
+    const words=s.match(/[A-Za-z][A-Za-z'-]*/g)||[];
+    const n=words.length;
+    const hits=[...new Set(words.map(w=>w.toLowerCase()).filter(w=>set.has(w)))];
+    let sc=0, why=[];
+    // 長さ：12–25語が息継ぎ一回で読める
+    if(n>=12&&n<=25){ sc+=40; why.push('長さ良'); }
+    else if(n>=9&&n<=30){ sc+=22; }
+    else { sc+=4; }
+    // 目標語 1–2個
+    if(hits.length===1||hits.length===2){ sc+=35; why.push('狙い語'+hits.length); }
+    else if(hits.length>=3){ sc+=14; why.push('語が多い'); }
+    else { sc-=30; }
+    // 数字は音読向きでない
+    const digits=(s.match(/\d/g)||[]).length;
+    sc-=Math.min(digits*4,20); if(digits>3) why.push('数字多');
+    // 文中の大文字＝固有名詞
+    const props=words.slice(1).filter(w=>/^[A-Z]/.test(w)).length;
+    sc-=Math.min(props*6,24); if(props>2) why.push('固有名詞多');
+    // 従属節の多さ
+    const commas=(s.match(/,/g)||[]).length;
+    if(commas<=1) sc+=10; else sc-=(commas-1)*7;
+    if(/[("]/.test(s)) sc-=8;
+    return {s,sc:Math.max(0,Math.min(100,sc)),hits,n,why};
+  });
+  return scored.filter(x=>x.hits.length>0).sort((a,b)=>b.sc-a.sc).slice(0,8);
+}
+
+/* ============================================================
+   7. 解説生成（Claude API・5語ずつ）
+   ============================================================ */
+async function explainBatch(batch){
+  const list=batch.map(t=>{
+    const ctx=S.sentences[t.si]||'';
+    return `- ${t.w} / 文脈: ${ctx.slice(0,220)}`;
+  }).join('\n');
+
+  const prompt=`あなたは日本人英語学習者（TOEIC 820程度）向けの語彙講師です。
+以下の英単語について、与えられた文脈での意味を解説してください。
+
+${list}
+
+JSONの配列のみを返してください。前置き、説明文、Markdownのコードフェンスは一切つけないこと。
+各要素の形式:
+{"word":"見出し語(原形)","pos":"noun|verb|adj|adv|phrase のいずれか","cefr":"B2 または C1 または C2","ja":"日本語の訳語(15字以内)","sense":"この文脈での意味と、辞書訳だけでは掴めないニュアンス。60〜90字の日本語。","ex":"その語を使った平易な英語例文(12〜18語)","exJa":"例文の日本語訳"}`;
+
+  const res=await fetch("/api/explain",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prompt})
+  });
+  if(!res.ok){
+    const detail=await res.text().catch(()=>"");
+    throw new Error("API "+res.status+(detail?" "+detail.slice(0,80):""));
+  }
+  const data=await res.json();
+  const text=data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  const clean=text.replace(/```json/g,"").replace(/```/g,"").trim();
+  const start=clean.indexOf("["), end=clean.lastIndexOf("]");
+  return JSON.parse(start>=0?clean.slice(start,end+1):clean);
+}
+
+async function explainAll(){
+  const btn=$('explain'); btn.disabled=true;
+  $('cards').innerHTML=''; S.cards=[];
+  $('copy').classList.add('hidden');
+  const batches=[];
+  for(let i=0;i<S.targets.length;i+=5) batches.push(S.targets.slice(i,i+5));
+
+  for(let i=0;i<batches.length;i++){
+    $('status').innerHTML=`<div class="status"><span class="dot"></span>解説中 ${i*5+1}–${Math.min((i+1)*5,S.targets.length)} / ${S.targets.length}</div>`;
+    try{
+      const out=await explainBatch(batches[i]);
+      out.forEach(c=>{ S.cards.push(c); $('cards').insertAdjacentHTML('beforeend',cardHTML(c)); });
+    }catch(e){
+      $('status').innerHTML=`<div class="err">解説の生成が途中で止まりました（${esc(e.message)}）。もう一度「解説をつくる」を押すとやり直せます。</div>`;
+      btn.disabled=false; return;
+    }
+  }
+  $('status').innerHTML='';
+  $('copy').classList.remove('hidden');
+  btn.disabled=false;
+}
+
+function cardHTML(c){
+  const hard=(c.cefr==='C1'||c.cefr==='C2');
+  return `<article class="card ${hard?'c1':''}" data-w="${esc((c.word||'').toLowerCase())}">
+    <div class="top">
+      <span class="word">${esc(c.word||'')}</span>
+      <span class="pos">${esc(c.pos||'')}</span>
+      <span class="cefr">${esc(c.cefr||'')}</span>
+    </div>
+    <p class="ja">${esc(c.ja||'')}</p>
+    <p class="sense">${esc(c.sense||'')}</p>
+    <div class="ex">
+      <p class="en">${esc(c.ex||'')}</p>
+      <p class="jp">${esc(c.exJa||'')}</p>
+    </div>
+  </article>`;
+}
+
+/* ============================================================
+   8. 音読 UI
+   ============================================================ */
+function renderLines(){
+  const box=$('lines'); box.innerHTML='';
+  if(!S.lines.length){ $('emptyLines').classList.remove('hidden'); return; }
+  $('emptyLines').classList.add('hidden');
+  S.lines.forEach((L,i)=>{
+    const set=new Set(L.hits);
+    const html=esc(L.s).replace(/[A-Za-z][A-Za-z'-]*/g,m=>set.has(m.toLowerCase())?`<b>${m}</b>`:m);
+    box.insertAdjacentHTML('beforeend',`
+      <div class="line">
+        <p class="en">${html}</p>
+        <div class="meta">
+          <button class="speak" data-i="${i}">読み上げ</button>
+          <span>${L.n}語</span>
+          <span class="bar"><i style="width:${L.sc}%"></i></span>
+          <span>${L.why.join(' / ')||'—'}</span>
+        </div>
+      </div>`);
+  });
+  box.querySelectorAll('.speak').forEach(b=>b.onclick=()=>speak(b,S.lines[+b.dataset.i].s));
+}
+
+function speak(btn,text){
+  if(!('speechSynthesis' in window)){ btn.textContent='読み上げ非対応'; return; }
+  speechSynthesis.cancel();
+  if(S.speaking===btn){ S.speaking=null; btn.dataset.on='0'; btn.textContent='読み上げ'; return; }
+  document.querySelectorAll('.speak').forEach(b=>{b.dataset.on='0';b.textContent='読み上げ';});
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='en-US'; u.rate=S.rate;
+  const v=speechSynthesis.getVoices().find(v=>/^en(-|_)?(US|GB)/i.test(v.lang));
+  if(v) u.voice=v;
+  u.onend=()=>{btn.dataset.on='0';btn.textContent='読み上げ';S.speaking=null;};
+  btn.dataset.on='1'; btn.textContent='停止'; S.speaking=btn;
+  speechSynthesis.speak(u);
+}
+
+/* ============================================================
+   9. タブ・操作
+   ============================================================ */
+function switchTab(name){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
+  $('paneWords').classList.toggle('hidden',name!=='words');
+  $('paneLines').classList.toggle('hidden',name!=='lines');
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+
+document.querySelectorAll('.level button').forEach(b=>b.onclick=()=>{
+  S.level=b.dataset.lv;
+  document.querySelectorAll('.level button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  if($('src').value.trim()) $('mark').click();
+});
+
+document.querySelectorAll('.rate button').forEach(b=>b.onclick=()=>{
+  S.rate=parseFloat(b.dataset.rate);
+  document.querySelectorAll('.rate button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+});
+
+$('mark').onclick=()=>{
+  const text=$('src').value.trim();
+  if(!text){ $('src').focus(); return; }
+  const {sents,targets}=extract(text);
+  S.sentences=sents; S.targets=targets;
+  S.lines=scoreLines(sents,targets);
+  renderMarked(text,targets);
+  renderLines();
+  $('cWords').textContent=targets.length;
+  $('cLines').textContent=S.lines.length;
+  $('cards').innerHTML=''; $('status').innerHTML=''; $('copy').classList.add('hidden');
+  $('explain').disabled=targets.length===0;
+  $('emptyWords').textContent = targets.length
+    ? `${targets.length}語を拾いました。「解説をつくる」で意味と例文を出します。`
+    : `しきい値を超える語がありませんでした。B1以上に切り替えるか、別の英文を試してください。`;
+  $('emptyWords').classList.remove('hidden');
+};
+
+$('explain').onclick=()=>{ $('emptyWords').classList.add('hidden'); explainAll(); };
+
+$('copy').onclick=async()=>{
+  const md=['# 語取り '+new Date().toLocaleDateString('ja-JP'),'','## 語','']
+    .concat(S.cards.map(c=>`### ${c.word} — ${c.ja}\n\n- ${c.pos} / ${c.cefr}\n- ${c.sense}\n- ${c.ex}\n- ${c.exJa}\n`))
+    .concat(['## 音読',''])
+    .concat(S.lines.map(l=>`- ${l.s}`))
+    .join('\n');
+  try{ await navigator.clipboard.writeText(md); $('copy').textContent='コピーしました'; }
+  catch{ $('copy').textContent='コピーできません'; }
+  setTimeout(()=>$('copy').textContent='Markdownでコピー',1800);
+};
+
+$('sample').onclick=()=>{
+  $('src').value=`For decades, sleep was regarded as a passive interval, a period in which the brain simply idled. That assumption has been steadily dismantled. Researchers now describe sleep as an active phase in which the day's experiences are replayed, sorted and consolidated into durable memory.
+
+The mechanism is surprisingly selective. Rather than preserving everything, the brain appears to prioritise material it deems relevant, discarding the trivial and reinforcing what is likely to matter later. Studies suggest that people who are told beforehand that they will be tested retain considerably more, which implies that intention itself modulates what survives the night.
+
+The implications for learning are substantial, though frequently distorted in popular accounts. Sleep does not compensate for shallow study, nor does it embed material that was never properly attended to in the first place. What it seems to do is stabilise fragile traces and integrate them with existing knowledge, a process that cannot be accelerated by willpower alone. Cutting sleep to extend study time, on this evidence, is a false economy.`;
+  $('mark').click();
+};
+
+if('speechSynthesis' in window) speechSynthesis.getVoices();
+</script>
+</body>
+</html>
