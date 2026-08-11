@@ -1,6 +1,6 @@
 {
   "name": "gadori",
-  "compatibility_date": "2026-08-12",
+  "compatibility_date": "2026-08-10",
   "main": "./src/index.js",
   "assets": {
     "directory": "./public/",
